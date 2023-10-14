@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+set -e
+
+run_on_branches="main uat"
+
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+
+RED="\033[31m"
+GREEN="\033[32m"
+RESET="\033[0m"
+
+run_tests=0
+
+for branch in $run_on_branches; do
+  if [ "$branch" = "$current_branch" ]; then
+    run_tests=1
+    break
+  fi
+done
+
+if [ $run_tests -eq 1 ]; then
+  echo -e "${GREEN}Running all tests before your push. Please wait...${RESET}"
+  make coverage
+
+  if [ $? -eq 0 ]; then
+    echo -e "${GREEN}Tests passed successfully!${RESET}"
+  else
+    echo -e "${RED}Tests failed! Please fix the issues before pushing.${RESET}"
+    exit 1
+  fi
+else
+  echo -e "${GREEN}Skipping tests for branch ${current_branch}${RESET}"
+fi

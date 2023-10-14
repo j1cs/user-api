@@ -1,0 +1,64 @@
+services:
+  init-pubsub:
+    build:
+      context: build/pubsub
+    environment:
+      PUBSUB_PROJECT_ID: ${GCP_PROJECT_ID}
+      PUBSUB_TOPIC_ID: ${GCP_TOPIC_ID}
+      PUBSUB_PORT: ${PUBSUB_EMULATOR_PORT}
+      PUBSUB_EMULATOR_HOST: pubsub:${PUBSUB_EMULATOR_PORT}
+    depends_on:
+      pubsub:
+        condition: service_healthy
+    networks:
+      - internal
+  pubsub:
+    image: google/cloud-sdk
+    ports:
+      - "${PUBSUB_EMULATOR_PORT}:8085"
+    environment:
+      PUBSUB_PROJECT_ID: ${GCP_PROJECT_ID}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -s http://localhost:${PUBSUB_EMULATOR_PORT}
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    command: ["gcloud", "beta", "emulators", "pubsub", "start", "--project=${GCP_PROJECT_ID}", "--host-port", "0.0.0.0:${PUBSUB_EMULATOR_PORT}"]
+    networks:
+      - internal
+  postgres:
+    image: 'postgres:alpine'
+    volumes:
+      - './scripts/db/01-create-user-database.sh:/docker-entrypoint-initdb.d/01-create-user-database.sh'
+      - './scripts/db/02-schema-permissions.sh:/docker-entrypoint-initdb.d/02-schema-permissions.sh'
+      - './scripts/db/03-permission-tables.sh:/docker-entrypoint-initdb.d/03-permission-tables.sh'
+    ports:
+      - "${DATABASE_PORT}:5432"
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_NAME=${DATABASE_NAME}
+      - SCHEMA_NAME=${SCHEMA_NAME}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${POSTGRES_USER}
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+  adminer:
+    image: adminer
+    environment:
+      - ADMINER_DEFAULT_SERVER=${ADMINER_DEFAULT_SERVER}
+    ports:
+      - "${ADMINER_PORT}:8080"
+    networks:
+      - internal
+networks:
+  internal:
+    driver: bridge

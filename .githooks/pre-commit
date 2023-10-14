@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+# ANSI escape sequences for setting text colors
+RED="\033[31m"
+GREEN="\033[32m"
+RESET="\033[0m"
+
+echo -e "${GREEN}Format, linting and clean your code before your commit. Please wait...${RESET}"
+make format
+
+# Check the exit status of the make command
+if [ $? -eq 0 ]
+then
+  echo -e "${GREEN}Format successfully done!${RESET}"
+else
+  echo -e "${RED}Format failed! Please fix the issues before committing.${RESET}"
+  exit 1
+fi
